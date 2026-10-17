@@ -1,1169 +1,841 @@
 
-/*
-  HALLOWEENI INTERAKTIIVNE E-KAART
-  =================================
+Oled p5.js generatiivse kunsti abiline. Tõlgi minu kirjeldus töötavaks p5.js koodiks. Anna ainult terviklik JavaScript kood, kommentaaridega ja muudetavate numbriliste parameetritega koodi alguses.
 
-  Animatsioon:
-  1. Hõljuv ümbrik
-  2. Ümbriku raputamine
-  3. Klapi avanemine
-  4. Kirja väljatõusmine
-  5. Konfettiplahvatus
-  6. Nelja kassifoto lend nurkadesse
-  7. Fotod hõljuvad
-  8. Fotole vajutades hüpe ja südamed
+Minu visuaal: [Tee halloweeni tervitus minu parimatele sõbrannadele.Tee kinnine punast värvi punutud korv ja pane sinna istuma kass1.jpg. Korvile kirjuta peale Kallid Ade ja Irka! Seejärel lendab korvile vajutadest korvist välja pilt kass4.jpg ja veereb välja kass2.jpg koos kummitusega kass3.jpg. Tekib paus 2 sek ja seejärel lendab uuesti välja kass4.jpg ning tekst Tagasihoidlik Halloweeni tervitus teile!]
+// =====================================================
+// 🎃 HALLOWEENI TERVITUS ADELE JA IRKALE 🎃
+// Interaktiivne p5.js animatsioon
+//
+// Pildid peavad olema p5.js projekti kaustas:
+// kass1.jpg - kass, kes istub punases korvis
+// kass2.jpg - kass, kes veereb korvist välja
+// kass3.jpg - kummitus
+// kass4.jpg - kass, kes lendab korvist välja
+//
+// Vajuta punasele korvile, et animatsioon algaks!
+// Uuesti alustamiseks vajuta korvile veel kord.
+// =====================================================
 
-  Pildid:
-  pildid/kass1.jpg
-  pildid/kass2.jpg
-  pildid/kass3.jpg
-  pildid/kass4.jpg
-*/
 
-// =====================================
-// MUUDETAVAD PARAMEETRID
-// =====================================
+// =====================================================
+// 1. MUUDETAVAD NUMBRILISED PARAMEETRID
+// =====================================================
 
-// Ümbrik
-const UMBRIKU_LAIUS = 390;
-const UMBRIKU_KORGUS = 260;
-const HOLJUMISE_KORGUS = 12;
-const HOLJUMISE_KIIRUS = 0.002;
+const LAIUS = 900;
+const KORGUS = 650;
 
-// Animatsioonide kestused millisekundites
-const RAPUTUSE_AEG = 650;
-const KLAPI_AVAMISE_AEG = 850;
-const KIRJA_VALJUMISE_AEG = 950;
-const PLAHVATUSE_AEG = 450;
-const FOTODE_LENNU_AEG = 1900;
+const KORVI_X = 450;
+const KORVI_Y = 435;
+const KORVI_LAIUS = 370;
+const KORVI_KORGUS = 225;
 
-// Konfetti
-const KONFETI_ARV = 180;
-const KONFETI_KIIRUS = 13;
-const KONFETI_GRAVITATSIOON = 0.12;
+const KASS1_SUURUS = 175;
+const KASS2_SUURUS = 145;
+const KASS3_SUURUS = 150;
+const KASS4_SUURUS = 165;
 
-// Fotod
-const FOTO_LAIUS = 220;
-const FOTO_KORGUS = 265;
-const FOTO_AAR = 13;
-const FOTO_ALUMINE_AAR = 45;
-const FOTO_HOLJUMINE = 9;
-const FOTO_HOLJUMISE_KIIRUS = 0.0018;
-const FOTO_HUPPE_KORGUS = 35;
-const FOTO_HUPPE_AEG = 600;
+const LENDAMISE_KIIRUS = 4.5;
+const VEEREMISE_KIIRUS = 3.2;
+const KUMMITUSE_KIIRUS = 2.5;
 
-// Südamed
-const SUDAMETE_ARV = 22;
-const SUDAMETE_KIIRUS = 5;
-const SUDAMETE_ELUIGA = 1100;
+const PAUS = 2000; // Paus millisekundites
+const ESIMENE_LEND = 1700;
+const VEEREMISE_AEG = 2200;
+const TEINE_LEND = 2000;
 
-// Taust
-const TAHTEDE_ARV = 100;
-const SADEMETE_ARV = 55;
+const TAHTE_ARV = 75;
+const KORVI_PUNUTISE_SAMM = 17;
+const KONFETI_ARV = 55;
 
-// =====================================
-// GLOBAALSED MUUTUJAD
-// =====================================
 
-let fotod = [];
-let konfetti = [];
-let sudamed = [];
-let tahed = [];
-let sademed = [];
+// =====================================================
+// 2. GLOBAALSED MUUTUJAD
+// =====================================================
+
+let kass1, kass2, kass3, kass4;
 
 let etapp = 0;
 let etapiAlgus = 0;
 
-let umbrikuNupp;
-let juhis;
+let tahed = [];
+let konfetid = [];
 
-let paigutusSkaala = 1;
+let hiireKohal = false;
 
-// Etapid:
-// 0 = suletud ümbrik
-// 1 = raputamine
-// 2 = klapi avamine
-// 3 = kirja väljatõusmine
-// 4 = plahvatus
-// 5 = fotode lend
-// 6 = fotod hõljuvad
 
-// =====================================
-// PILTIDE LAADIMINE
-// =====================================
+// =====================================================
+// 3. PILTIDE LAADIMINE
+// =====================================================
 
 function preload() {
-  for (let i = 1; i <= 4; i++) {
-    let foto = {
-      pilt: null,
-      laaditud: false,
-      x: 0,
-      y: 0,
-      sihtX: 0,
-      sihtY: 0,
-      nurk: 0,
-      sihtNurk: 0,
-      faas: i * 1.4,
-      hyppeAlgus: -10000
-    };
-
-    fotod.push(foto);
-
-    const f = foto;
-
-    f.pilt = loadImage(
-      "pildid/kass" + i + ".jpg",
-      () => {
-        f.laaditud = true;
-      },
-      () => {
-        f.laaditud = false;
-      }
-    );
-  }
+  kass1 = loadImage("kass1.jpg");
+  kass2 = loadImage("kass2.jpg");
+  kass3 = loadImage("kass3.jpg");
+  kass4 = loadImage("kass4.jpg");
 }
 
-// =====================================
-// SETUP
-// =====================================
+
+// =====================================================
+// 4. ALGSEADISTUS
+// =====================================================
 
 function setup() {
-  createCanvas(windowWidth, windowHeight);
+  createCanvas(LAIUS, KORGUS);
 
+  textAlign(CENTER, CENTER);
   imageMode(CENTER);
   rectMode(CENTER);
-  textAlign(CENTER, CENTER);
   angleMode(RADIANS);
 
-  arvutaPaigutus();
-  looTaustaelementid();
-
-  umbrikuNupp =
-    document.getElementById("avaNupp");
-
-  juhis =
-    document.getElementById("juhis");
-
-  umbrikuNupp.addEventListener(
-    "click",
-    alustaAnimatsiooni
-  );
-
-  uuendaNupuAsukoht();
-}
-
-// =====================================
-// PAIGUTUS
-// =====================================
-
-function arvutaPaigutus() {
-  paigutusSkaala = min(
-    width / 900,
-    height / 650,
-    1.15
-  );
-
-  // Väiksemal ekraanil paigutuvad
-  // fotod nelja nurka väiksemana.
-  let positsioonid = [
-    [0.19, 0.25, -0.13],
-    [0.81, 0.25,  0.12],
-    [0.19, 0.75,  0.10],
-    [0.81, 0.75, -0.12]
-  ];
-
-  for (let i = 0; i < 4; i++) {
-    fotod[i].sihtX =
-      width * positsioonid[i][0];
-
-    fotod[i].sihtY =
-      height * positsioonid[i][1];
-
-    fotod[i].sihtNurk =
-      positsioonid[i][2];
-  }
-}
-
-function uuendaNupuAsukoht() {
-  if (!umbrikuNupp) return;
-
-  let w = UMBRIKU_LAIUS * paigutusSkaala;
-  let h = UMBRIKU_KORGUS * paigutusSkaala;
-
-  umbrikuNupp.style.width = w + "px";
-  umbrikuNupp.style.height = h + "px";
-  umbrikuNupp.style.left = width / 2 + "px";
-  umbrikuNupp.style.top = height / 2 + "px";
-  umbrikuNupp.style.transform =
-    "translate(-50%, -50%)";
-}
-
-// =====================================
-// TAUSTAELEMENDID
-// =====================================
-
-function looTaustaelementid() {
-  tahed = [];
-  sademed = [];
-
-  for (let i = 0; i < TAHTEDE_ARV; i++) {
+  // Tähistaevas
+  for (let i = 0; i < TAHTE_ARV; i++) {
     tahed.push({
-      x: random(1),
-      y: random(1),
-      suurus: random(1, 3),
+      x: random(width),
+      y: random(height * 0.75),
+      r: random(1, 3),
       faas: random(TWO_PI)
     });
   }
 
-  for (let i = 0; i < SADEMETE_ARV; i++) {
-    sademed.push({
-      x: random(1),
-      y: random(1),
-      suurus: random(2, 5),
-      kiirus: random(0.3, 1.2),
-      faas: random(TWO_PI)
+  // Sädelevad konfetid
+  for (let i = 0; i < KONFETI_ARV; i++) {
+    konfetid.push({
+      x: random(width),
+      y: random(-height, 0),
+      kiirus: random(1, 3),
+      suurus: random(3, 8),
+      toon: random(360)
     });
   }
 }
 
-// =====================================
-// ANIMATSIOONI KÄIVITAMINE
-// =====================================
 
-function alustaAnimatsiooni() {
-  if (etapp !== 0) return;
-
-  etapp = 1;
-  etapiAlgus = millis();
-
-  umbrikuNupp.classList.add("peidetud");
-  juhis.textContent = "";
-
-  konfetti = [];
-  sudamed = [];
-}
-
-function vahetaEtapp(uusEtapp) {
-  etapp = uusEtapp;
-  etapiAlgus = millis();
-
-  if (etapp === 4) {
-    tekitaKonfetti();
-  }
-
-  if (etapp === 6) {
-    juhis.textContent =
-      "Vajuta kassipildile – südamed lendavad!";
-  }
-}
-
-// =====================================
-// PEAMINE DRAW
-// =====================================
+// =====================================================
+// 5. ANIMATSIOONI PEATSÜKKEL
+// =====================================================
 
 function draw() {
   joonistaTaust();
   joonistaKuu();
   joonistaTahed();
-  joonistaSademed();
+  joonistaKorv();
+
+  // Kass1 istub alguses korvis.
+  // Hiljem jääb ta korvist välja piiluma.
+  joonistaKorviKass();
+
+  // Korvi esiosa katab kassi alumist osa.
+  joonistaKorviEsiosa();
 
   let aeg = millis() - etapiAlgus;
 
   if (etapp === 0) {
-    joonistaPealkiri();
-
-    let holjumine =
-      sin(millis() * HOLJUMISE_KIIRUS) *
-      HOLJUMISE_KORGUS;
-
-    joonistaUmbrik(0, 0, holjumine);
+    joonistaAlgusTekst();
   }
 
-  else if (etapp === 1) {
-    joonistaPealkiri();
+  // ETAPP 1: kass4 lendab korvist välja.
+  if (etapp === 1) {
+    let p = constrain(aeg / ESIMENE_LEND, 0, 1);
+    joonistaLendavKass(p, false);
 
-    let raputus =
-      sin(aeg * 0.09) *
-      15 *
-      (1 - aeg / RAPUTUSE_AEG);
-
-    joonistaUmbrik(raputus, 0, 0);
-
-    if (aeg >= RAPUTUSE_AEG) {
-      vahetaEtapp(2);
+    if (p >= 1) {
+      alustaEtapp(2);
     }
   }
 
-  else if (etapp === 2) {
-    joonistaPealkiri();
+  // ETAPP 2: kass2 veereb välja koos kummitusega.
+  if (etapp === 2) {
+    let p = constrain(aeg / VEEREMISE_AEG, 0, 1);
 
-    let t = constrain(
-      aeg / KLAPI_AVAMISE_AEG,
-      0, 1
-    );
+    joonistaVeerevKass(p);
+    joonistaKummitus(p);
 
-    joonistaUmbrik(0, t, 0);
-
-    if (aeg >= KLAPI_AVAMISE_AEG) {
-      vahetaEtapp(3);
+    if (p >= 1) {
+      alustaEtapp(3);
     }
   }
 
-  else if (etapp === 3) {
-    joonistaPealkiri();
+  // ETAPP 3: kahe sekundi pikkune paus.
+  if (etapp === 3) {
+    joonistaVeerevKass(1);
+    joonistaKummitus(1);
 
-    let t = constrain(
-      aeg / KIRJA_VALJUMISE_AEG,
-      0, 1
-    );
-
-    joonistaUmbrik(0, 1, 0, t);
-
-    if (aeg >= KIRJA_VALJUMISE_AEG) {
-      vahetaEtapp(4);
+    if (aeg >= PAUS) {
+      alustaEtapp(4);
     }
   }
 
-  else if (etapp === 4) {
-    joonistaKonfetti();
+  // ETAPP 4: kass4 lendab uuesti välja.
+  if (etapp === 4) {
+    let p = constrain(aeg / TEINE_LEND, 0, 1);
 
-    if (aeg >= PLAHVATUSE_AEG) {
-      vahetaEtapp(5);
+    joonistaVeerevKass(1);
+    joonistaKummitus(1);
+    joonistaLendavKass(p, true);
+
+    if (p >= 1) {
+      alustaEtapp(5);
     }
   }
 
-  else if (etapp === 5) {
-    joonistaKonfetti();
-
-    let t = constrain(
-      aeg / FOTODE_LENNU_AEG,
-      0, 1
-    );
-
-    joonistaLendavadFotod(t);
-
-    if (aeg >= FOTODE_LENNU_AEG) {
-      vahetaEtapp(6);
-    }
+  // ETAPP 5: lõplik Halloweeni tervitus.
+  if (etapp === 5) {
+    joonistaVeerevKass(1);
+    joonistaKummitus(1);
+    joonistaLendavKass(1, true);
+    joonistaKonfetid();
+    joonistaLopuTekst();
   }
 
-  else if (etapp === 6) {
-    joonistaKonfetti();
-    joonistaHoljuvadFotod();
-    joonistaSudamed();
-    joonistaLopputekst();
+  // Väike dekoratiivne tekst ekraani allosas
+  if (etapp !== 5) {
+    push();
+    fill(255, 190, 105);
+    noStroke();
+    textSize(15);
+    text("🎃  Halloween täis üllatusi!  🎃", width / 2, 625);
+    pop();
   }
+
+  hiireKohal =
+    mouseX > KORVI_X - KORVI_LAIUS / 2 &&
+    mouseX < KORVI_X + KORVI_LAIUS / 2 &&
+    mouseY > KORVI_Y - 100 &&
+    mouseY < KORVI_Y + KORVI_KORGUS / 2;
+
+  cursor(hiireKohal ? HAND : ARROW);
 }
 
-// =====================================
-// TÄISEKRAANI TAUST
-// =====================================
+
+// =====================================================
+// 6. TUMELILLA HALLOWEENI TAUST
+// =====================================================
 
 function joonistaTaust() {
-  background(14, 8, 35);
+  background(19, 9, 36);
+
+  // Öötaeva gradient
   noStroke();
 
-  for (let y = 0; y < height; y += 4) {
+  for (let y = 0; y < height; y += 3) {
     let t = y / height;
 
-    fill(
-      lerp(17, 65, t),
-      lerp(9, 15, t),
-      lerp(43, 63, t)
+    let c = lerpColor(
+      color(24, 9, 49),
+      color(84, 29, 63),
+      t
     );
 
+    fill(c);
     rect(width / 2, y, width, 4);
   }
 
-  fill(35, 15, 40);
+  // Udune maapind
+  fill(40, 15, 45, 130);
+  ellipse(width / 2, height + 35, 1100, 210);
 
-  ellipse(
-    width / 2,
-    height + 115,
-    width * 1.5,
-    310
-  );
-
-  fill(130, 80, 155, 24);
-
-  ellipse(
-    width * 0.25,
-    height * 0.85,
-    width * 0.6,
-    90
-  );
-
-  ellipse(
-    width * 0.75,
-    height * 0.87,
-    width * 0.55,
-    80
-  );
+  // Kõrvitsad maapinnal
+  joonistaKorvits(95, 565, 0.85);
+  joonistaKorvits(810, 565, 1.05);
 }
+
+
+// =====================================================
+// 7. KUU JA TÄHED
+// =====================================================
 
 function joonistaKuu() {
   push();
 
-  let x = width * 0.14;
-  let y = height * 0.17;
-  let s = 110 * paigutusSkaala;
-
   noStroke();
 
-  fill(255, 195, 85, 15);
-  circle(x, y, s * 1.8);
+  fill(255, 185, 65, 20);
+  ellipse(735, 115, 175);
 
-  fill(255, 198, 92, 30);
-  circle(x, y, s * 1.5);
+  fill(255, 196, 92, 35);
+  ellipse(735, 115, 145);
 
-  fill(255, 215, 125);
-  circle(x, y, s);
+  fill(255, 223, 143);
+  ellipse(735, 115, 105);
 
-  fill(230, 177, 90, 65);
-  circle(x - 18, y - 13, s * 0.17);
-  circle(x + 20, y + 16, s * 0.12);
+  fill(255, 242, 190);
+  ellipse(722, 100, 20);
 
   pop();
 }
 
 function joonistaTahed() {
+  push();
   noStroke();
 
   for (let t of tahed) {
-    let heledus =
-      140 +
-      115 * sin(
-        millis() * 0.002 + t.faas
-      );
+    let helendus =
+      140 + 115 * sin(frameCount * 0.035 + t.faas);
 
-    fill(255, 225, 165, heledus);
-
-    circle(
-      t.x * width,
-      t.y * height,
-      t.suurus * 2
-    );
+    fill(255, 224, 170, helendus);
+    circle(t.x, t.y, t.r * 2);
   }
+
+  pop();
 }
 
-function joonistaSademed() {
-  noStroke();
 
-  for (let s of sademed) {
-    let x =
-      s.x * width +
-      sin(millis() * 0.001 + s.faas) * 20;
+// =====================================================
+// 8. HALLOWEENI KÕRVITSAD
+// =====================================================
 
-    let y =
-      (
-        s.y * height -
-        millis() * s.kiirus * 0.025 +
-        height * 100
-      ) % height;
-
-    fill(255, 150, 55, 135);
-    circle(x, y, s.suurus);
-  }
-}
-
-// =====================================
-// PEALKIRI
-// =====================================
-
-function joonistaPealkiri() {
+function joonistaKorvits(x, y, s) {
   push();
 
-  textFont("Caveat");
-  textStyle(BOLD);
-  textSize(
-    min(78, width * 0.10)
-  );
+  translate(x, y);
+  scale(s);
 
-  fill(255, 220, 155);
+  noStroke();
 
-  drawingContext.shadowBlur = 25;
-  drawingContext.shadowColor = "#ff923d";
+  fill(180, 64, 9);
+  ellipse(-22, 0, 60, 76);
+  ellipse(22, 0, 60, 76);
 
-  text(
-    "Sulle on kiri!",
-    width / 2,
-    height * 0.19
+  fill(244, 109, 18);
+  ellipse(0, 0, 70, 82);
+
+  fill(52, 91, 35);
+  rect(0, -46, 11, 25, 4);
+
+  // Silmad
+  fill(38, 17, 21);
+
+  triangle(-26, -8, -8, -8, -17, 9);
+  triangle(8, -8, 26, -8, 17, 9);
+
+  // Naeratus
+  arc(0, 13, 39, 28, 0, PI, CHORD);
+
+  pop();
+}
+
+
+// =====================================================
+// 9. PUNANE PUNUTUD KORV
+// =====================================================
+
+function joonistaKorv() {
+  push();
+
+  translate(KORVI_X, KORVI_Y);
+
+  let w = KORVI_LAIUS;
+  let h = KORVI_KORGUS;
+
+  // Vari korvi all
+  noStroke();
+  fill(0, 0, 0, 90);
+  ellipse(0, h * 0.52, w * 1.1, 48);
+
+  // Korvi sang
+  noFill();
+  stroke(114, 23, 31);
+  strokeWeight(27);
+  arc(0, -45, w * 0.82, 290, PI, TWO_PI);
+
+  stroke(218, 75, 78);
+  strokeWeight(17);
+  arc(0, -45, w * 0.82, 290, PI, TWO_PI);
+
+  // Korvi tagumine osa
+  noStroke();
+  fill(122, 20, 35);
+
+  ellipse(0, -36, w, 85);
+
+  // Korvi suletud, punutud ilmega ülemine serv
+  fill(183, 35, 49);
+  ellipse(0, -52, w * 0.96, 62);
+
+  stroke(245, 118, 109, 140);
+  strokeWeight(3);
+
+  for (let x = -w * 0.44; x < w * 0.44; x += 16) {
+    line(x, -68, x + 19, -37);
+  }
+
+  pop();
+}
+
+
+// =====================================================
+// 10. KASS1 ISTUB KORVIS
+// =====================================================
+
+function joonistaKorviKass() {
+  push();
+
+  let hyplemine = sin(frameCount * 0.045) * 3;
+
+  image(
+    kass1,
+    KORVI_X,
+    KORVI_Y - 83 + hyplemine,
+    KASS1_SUURUS,
+    KASS1_SUURUS
   );
 
   pop();
 }
 
-// =====================================
-// ÜMBRIKU JOONISTAMINE
-// =====================================
 
-function joonistaUmbrik(
-  raputus = 0,
-  klapp = 0,
-  holjumine = 0,
-  kiri = 0
-) {
+// =====================================================
+// 11. KORVI ESIPANEEL JA PUNUTIS
+// =====================================================
+
+function joonistaKorviEsiosa() {
   push();
 
-  translate(
-    width / 2 + raputus,
-    height / 2 + holjumine
-  );
+  translate(KORVI_X, KORVI_Y);
 
-  scale(paigutusSkaala);
+  let w = KORVI_LAIUS;
+  let h = KORVI_KORGUS;
 
-  let w = UMBRIKU_LAIUS;
-  let h = UMBRIKU_KORGUS;
-
-  // Vari.
+  // Punane korvikeha
   noStroke();
-  fill(0, 0, 0, 75);
-  ellipse(0, h * 0.65, w * 1.05, 35);
-
-  // Ümbriku tagumine osa.
-  fill(130, 20, 48);
-  rect(0, 0, w, h, 12);
-
-  // Avatud klapp paikneb ümbriku taga.
-  if (klapp > 0) {
-    let avatus = easeOutCubic(klapp);
-
-    fill(215, 55, 83);
-    stroke(105, 15, 40);
-    strokeWeight(3);
-
-    beginShape();
-    vertex(-w / 2, -h / 2);
-    vertex(0, -h / 2 - h * 0.55 * avatus);
-    vertex(w / 2, -h / 2);
-    endShape(CLOSE);
-  }
-
-  // Väljatõusev kiri.
-  if (kiri > 0) {
-    let t = easeOutCubic(kiri);
-
-    push();
-
-    translate(0, -t * h * 0.65);
-
-    fill(255, 244, 220);
-    stroke(220, 190, 150);
-    strokeWeight(2);
-
-    rect(0, -10, w * 0.75, h * 0.78, 8);
-
-    noStroke();
-    fill(145, 40, 65);
-    textFont("Caveat");
-    textSize(32);
-
-    text(
-      "Kallid Ade ja Irka!",
-      0,
-      -30
-    );
-
-    textSize(21);
-    text("Üllatus!", 0, 12);
-
-    pop();
-  }
-
-  // Ümbriku esiosa.
-  noStroke();
-  fill(220, 55, 80);
+  fill(165, 30, 44);
 
   beginShape();
-  vertex(-w / 2, -h / 2);
-  vertex(0, h * 0.12);
-  vertex(w / 2, -h / 2);
-  vertex(w / 2, h / 2);
-  vertex(-w / 2, h / 2);
+  vertex(-w / 2, -28);
+  bezierVertex(-w / 2 + 15, 60, -w / 2 + 35, h / 2, 0, h / 2);
+  bezierVertex(w / 2 - 35, h / 2, w / 2 - 15, 60, w / 2, -28);
   endShape(CLOSE);
 
-  // Alumine kolmnurk.
-  fill(240, 95, 105);
+  // Punutud horisontaalsed ribad
+  stroke(231, 91, 89, 180);
+  strokeWeight(5);
 
-  triangle(
-    -w / 2, h / 2,
-    0, -h * 0.03,
-    w / 2, h / 2
-  );
+  for (let y = -12; y <= 92; y += KORVI_PUNUTISE_SAMM) {
+    let poolLaius = map(y, -12, 92, w * 0.48, w * 0.37);
 
-  // Suletud klapp.
-  if (klapp < 1) {
-    fill(180, 35, 65);
-    stroke(105, 15, 40);
-    strokeWeight(3);
-
-    let otsY =
-      lerp(
-        h * 0.16,
-        -h / 2,
-        easeOutCubic(klapp)
-      );
-
-    triangle(
-      -w / 2, -h / 2,
-      0, otsY,
-      w / 2, -h / 2
-    );
+    line(-poolLaius, y, poolLaius, y);
   }
 
-  // Südamekujuline pitsat.
-  if (klapp < 0.6) {
-    noStroke();
-    fill(255, 190, 125);
-    circle(0, h * 0.10, 68);
+  // Diagonaalsed punutised
+  stroke(105, 15, 29, 145);
+  strokeWeight(4);
 
-    fill(155, 20, 55);
-    textSize(36);
-    text("♥", 0, h * 0.10);
+  for (let x = -260; x <= 260; x += KORVI_PUNUTISE_SAMM) {
+    line(x, -22, x + 100, 103);
+    line(x + 100, -22, x, 103);
   }
+
+  // Ülemine punane äär
+  noFill();
+  stroke(105, 16, 28);
+  strokeWeight(20);
+  arc(0, -29, w, 53, 0, PI);
+
+  stroke(242, 107, 102);
+  strokeWeight(11);
+  arc(0, -31, w, 53, 0, PI);
+
+  // Sildike korvil
+  noStroke();
+  fill(79, 10, 27, 210);
+  rect(0, 35, 285, 61, 15);
+
+  stroke(255, 184, 119);
+  strokeWeight(2);
+  noFill();
+  rect(0, 35, 275, 53, 12);
+
+  // Tervitustekst korvil
+  noStroke();
+  fill(255, 230, 183);
+
+  textStyle(BOLD);
+  textSize(25);
+  text("Kallid Ade ja Irka!", 0, 35);
+  textStyle(NORMAL);
 
   pop();
 }
 
-// =====================================
-// KONFETTIPLAHVATUS
-// =====================================
 
-function tekitaKonfetti() {
-  konfetti = [];
+// =====================================================
+// 12. ESIMENE JA TEINE LEND - KASS4
+// =====================================================
 
-  let varvid = [
-    [255, 100, 120],
-    [255, 195, 65],
-    [180, 95, 255],
-    [105, 220, 185],
-    [255, 135, 55],
-    [255, 245, 190]
-  ];
-
-  for (let i = 0; i < KONFETI_ARV; i++) {
-    let nurk = random(TWO_PI);
-    let kiirus = random(
-      KONFETI_KIIRUS * 0.35,
-      KONFETI_KIIRUS
-    );
-
-    konfetti.push({
-      x: width / 2,
-      y: height / 2,
-      vx: cos(nurk) * kiirus,
-      vy: sin(nurk) * kiirus,
-      suurus: random(5, 13),
-      poore: random(TWO_PI),
-      poorkiirus: random(-0.13, 0.13),
-      varv: random(varvid),
-      elu: 255
-    });
-  }
-}
-
-function joonistaKonfetti() {
+function joonistaLendavKass(p, teineLend) {
   push();
-  rectMode(CENTER);
+
+  // Sujuv liikumine
+  let sujuv = easeOutCubic(p);
+
+  let algusX = KORVI_X;
+  let algusY = KORVI_Y - 65;
+
+  let loppX = teineLend ? 690 : 760;
+  let loppY = teineLend ? 205 : 110;
+
+  let x = lerp(algusX, loppX, sujuv);
+  let y = lerp(algusY, loppY, sujuv);
+
+  // Kaarekujuline lend
+  y -= sin(p * PI) * 125;
+
+  // Lendav kass pöörleb
+  translate(x, y);
+  rotate(sin(p * TWO_PI) * 0.28);
+
+  let suurus = KASS4_SUURUS * (0.75 + 0.25 * sujuv);
+
+  image(kass4, 0, 0, suurus, suurus);
+
+  pop();
+
+  // Sädelev lennujälg
+  push();
   noStroke();
 
-  for (let i = konfetti.length - 1; i >= 0; i--) {
-    let c = konfetti[i];
+  for (let i = 0; i < 13; i++) {
+    let t = max(0, p - i * 0.025);
 
-    c.x += c.vx;
-    c.y += c.vy;
+    let sx = lerp(algusX, loppX, easeOutCubic(t));
+    let sy = lerp(algusY, loppY, easeOutCubic(t));
 
-    c.vy += KONFETI_GRAVITATSIOON;
-    c.vx *= 0.994;
+    sy -= sin(t * PI) * 125;
 
-    c.poore += c.poorkiirus;
-    c.elu -= 1.2;
-
-    push();
-
-    translate(c.x, c.y);
-    rotate(c.poore);
-
-    fill(
-      c.varv[0],
-      c.varv[1],
-      c.varv[2],
-      max(0, c.elu)
+    fill(255, 195, 55, 180 - i * 12);
+    circle(
+      sx + sin(frameCount * 0.1 + i) * 12,
+      sy + cos(frameCount * 0.1 + i) * 12,
+      max(2, 12 - i * 0.6)
     );
-
-    rect(
-      0, 0,
-      c.suurus,
-      c.suurus * 0.6,
-      2
-    );
-
-    pop();
-
-    if (c.elu <= 0) {
-      konfetti.splice(i, 1);
-    }
   }
 
   pop();
 }
 
-// =====================================
-// FOTODE LEND
-// =====================================
 
-function joonistaLendavadFotod(t) {
-  let e = easeOutCubic(t);
+// =====================================================
+// 13. KASS2 VEEREB KORVIST VÄLJA
+// =====================================================
 
-  for (let i = 0; i < fotod.length; i++) {
-    let f = fotod[i];
-
-    // Kõik pildid stardivad ümbrikust.
-    let x = lerp(
-      width / 2,
-      f.sihtX,
-      e
-    );
-
-    let y =
-      lerp(
-        height / 2,
-        f.sihtY,
-        e
-      ) -
-      sin(t * PI) * 140 * paigutusSkaala;
-
-    let nurk =
-      lerp(0, f.sihtNurk, e) +
-      sin(t * TWO_PI) * 0.35;
-
-    let suurus = lerp(0.15, 1, e);
-
-    joonistaPolaroid(
-      f,
-      x,
-      y,
-      nurk,
-      suurus
-    );
-  }
-}
-
-// =====================================
-// HÕLJUVAD POLAROIDID
-// =====================================
-
-function joonistaHoljuvadFotod() {
-  for (let i = 0; i < fotod.length; i++) {
-    let f = fotod[i];
-
-    let holjumine =
-      sin(
-        millis() * FOTO_HOLJUMISE_KIIRUS +
-        f.faas
-      ) * FOTO_HOLJUMINE;
-
-    let hyppeAeg =
-      millis() - f.hyppeAlgus;
-
-    let hyppeT = constrain(
-      hyppeAeg / FOTO_HUPPE_AEG,
-      0, 1
-    );
-
-    let hyppeKorgus = 0;
-
-    if (hyppeT < 1) {
-      hyppeKorgus =
-        sin(hyppeT * PI) *
-        FOTO_HUPPE_KORGUS;
-    }
-
-    let x = f.sihtX;
-    let y =
-      f.sihtY +
-      holjumine -
-      hyppeKorgus;
-
-    let nurk =
-      f.sihtNurk +
-      sin(
-        millis() * 0.0015 + f.faas
-      ) * 0.025;
-
-    let suurus =
-      1 +
-      (hyppeT < 1
-        ? sin(hyppeT * PI) * 0.12
-        : 0);
-
-    joonistaPolaroid(
-      f,
-      x,
-      y,
-      nurk,
-      suurus
-    );
-  }
-}
-
-// =====================================
-// POLAROIDFOTO JOONISTAMINE
-// =====================================
-
-function joonistaPolaroid(
-  foto, x, y, nurk, suurus = 1
-) {
+function joonistaVeerevKass(p) {
   push();
+
+  let sujuv = easeOutCubic(p);
+
+  let x = lerp(KORVI_X, 245, sujuv);
+  let y = lerp(KORVI_Y - 35, 515, sujuv);
+
+  // Veeremise ajal teeb kass pöördeid.
+  let nurk = p < 1 ? -p * TWO_PI * 1.5 : -TWO_PI * 1.5;
 
   translate(x, y);
   rotate(nurk);
 
-  // Mahutame fotod ka mobiiliekraanile.
-  let mobiiliSkaala = min(
-    1,
-    width / 650,
-    height / 550
-  );
-
-  scale(suurus * mobiiliSkaala);
-
-  let w = FOTO_LAIUS;
-  let h = FOTO_KORGUS;
-
-  // Vari.
-  drawingContext.shadowBlur = 25;
-  drawingContext.shadowColor =
-    "rgba(0,0,0,0.55)";
-  drawingContext.shadowOffsetY = 12;
-
-  noStroke();
-  fill(255);
-  rect(0, 0, w, h, 4);
-
-  drawingContext.shadowBlur = 0;
-  drawingContext.shadowOffsetY = 0;
-
-  let pildiW = w - FOTO_AAR * 2;
-
-  let pildiH =
-    h -
-    FOTO_AAR -
-    FOTO_ALUMINE_AAR;
-
-  let pildiY =
-    -h / 2 +
-    FOTO_AAR +
-    pildiH / 2;
-
-  // Foto taust.
-  fill(230, 210, 220);
-  rect(
+  image(
+    kass2,
     0,
-    pildiY,
-    pildiW,
-    pildiH
-  );
-
-  if (
-    foto.laaditud &&
-    foto.pilt &&
-    foto.pilt.width > 0
-  ) {
-    // Pildi täitmine ilma moonutamiseta.
-    let img = foto.pilt;
-
-    let pildiSuhe = img.width / img.height;
-    let raamiSuhe = pildiW / pildiH;
-
-    let sx = 0;
-    let sy = 0;
-    let sw = img.width;
-    let sh = img.height;
-
-    if (pildiSuhe > raamiSuhe) {
-      sw = img.height * raamiSuhe;
-      sx = (img.width - sw) / 2;
-    } else {
-      sh = img.width / raamiSuhe;
-      sy = (img.height - sh) / 2;
-    }
-
-    imageMode(CORNER);
-
-    image(
-      img,
-      -pildiW / 2,
-      pildiY - pildiH / 2,
-      pildiW,
-      pildiH,
-      sx, sy, sw, sh
-    );
-
-    imageMode(CENTER);
-  } else {
-    fill(120, 70, 90);
-    textSize(55);
-    text("🐈", 0, pildiY);
-  }
-
-  // Polaroidi alumine tekst.
-  fill(105, 55, 70);
-  textFont("Caveat");
-  textSize(26);
-
-  let number = fotod.indexOf(foto) + 1;
-
-  text(
-    "Kassike " + number + " ♥",
     0,
-    h / 2 - 22
+    KASS2_SUURUS,
+    KASS2_SUURUS
   );
 
   pop();
 }
 
-// =====================================
-// FOTOLE VAJUTAMINE
-// =====================================
 
-function kontrolliFotoVajutust(px, py) {
-  if (etapp !== 6) return;
+// =====================================================
+// 14. KUMMITUS KASS3
+// =====================================================
 
-  let mobiiliSkaala = min(
-    1,
-    width / 650,
-    height / 550
-  );
-
-  // Kontrollime pealmisest fotost alates.
-  for (let i = fotod.length - 1; i >= 0; i--) {
-    let f = fotod[i];
-
-    let holjumine =
-      sin(
-        millis() * FOTO_HOLJUMISE_KIIRUS +
-        f.faas
-      ) * FOTO_HOLJUMINE;
-
-    let x = f.sihtX;
-    let y = f.sihtY + holjumine;
-
-    let nurk =
-      f.sihtNurk +
-      sin(
-        millis() * 0.0015 + f.faas
-      ) * 0.025;
-
-    // Teisendame kliki pööratud foto
-    // kohalikku koordinaatsüsteemi.
-    let dx = px - x;
-    let dy = py - y;
-
-    let kohalikX =
-      dx * cos(nurk) + dy * sin(nurk);
-
-    let kohalikY =
-      -dx * sin(nurk) + dy * cos(nurk);
-
-    let w = FOTO_LAIUS * mobiiliSkaala;
-    let h = FOTO_KORGUS * mobiiliSkaala;
-
-    if (
-      abs(kohalikX) <= w / 2 &&
-      abs(kohalikY) <= h / 2
-    ) {
-      f.hyppeAlgus = millis();
-
-      tekitaSudamed(x, y);
-
-      return;
-    }
-  }
-}
-
-// =====================================
-// SÜDAMETE TEKITAMINE
-// =====================================
-
-function tekitaSudamed(x, y) {
-  for (let i = 0; i < SUDAMETE_ARV; i++) {
-    let nurk = random(TWO_PI);
-    let kiirus = random(
-      1.5,
-      SUDAMETE_KIIRUS
-    );
-
-    sudamed.push({
-      x: x,
-      y: y,
-      vx: cos(nurk) * kiirus,
-      vy: sin(nurk) * kiirus - 2,
-      suurus: random(10, 25),
-      elu: SUDAMETE_ELUIGA,
-      poore: random(-0.4, 0.4),
-      varv: random([
-        [255, 80, 120],
-        [255, 130, 160],
-        [255, 190, 205],
-        [255, 95, 85]
-      ])
-    });
-  }
-}
-
-// =====================================
-// SÜDAMETE ANIMATSIOON
-// =====================================
-
-function joonistaSudamed() {
-  for (let i = sudamed.length - 1; i >= 0; i--) {
-    let s = sudamed[i];
-
-    s.x += s.vx;
-    s.y += s.vy;
-
-    s.vy += 0.035;
-    s.vx *= 0.99;
-
-    s.elu -= deltaTime;
-
-    let alpha = map(
-      s.elu,
-      0,
-      SUDAMETE_ELUIGA,
-      0,
-      255,
-      true
-    );
-
-    push();
-
-    translate(s.x, s.y);
-    rotate(s.poore);
-
-    fill(
-      s.varv[0],
-      s.varv[1],
-      s.varv[2],
-      alpha
-    );
-
-    noStroke();
-    joonistaSuda(0, 0, s.suurus);
-
-    pop();
-
-    if (s.elu <= 0) {
-      sudamed.splice(i, 1);
-    }
-  }
-}
-
-function joonistaSuda(x, y, s) {
+function joonistaKummitus(p) {
   push();
+
+  let sujuv = easeOutCubic(p);
+
+  let x = lerp(KORVI_X + 20, 135, sujuv);
+  let y = lerp(KORVI_Y - 65, 345, sujuv);
+
+  // Kummitus hõljub õhus.
+  y += sin(frameCount * 0.055) * 17;
 
   translate(x, y);
-  scale(s / 30);
 
-  beginShape();
+  // Õrn kummituslik kuma
+  noStroke();
 
-  vertex(0, 10);
+  fill(210, 225, 255, 35);
+  ellipse(0, 0, KASS3_SUURUS * 1.3);
 
-  bezierVertex(
-    -25, -5,
-    -15, -22,
-    0, -10
+  // Kummitusena kasutame kass3.jpg pilti.
+  tint(235, 245, 255, 210);
+
+  image(
+    kass3,
+    0,
+    0,
+    KASS3_SUURUS,
+    KASS3_SUURUS
   );
 
-  bezierVertex(
-    15, -22,
-    25, -5,
-    0, 10
-  );
+  noTint();
 
-  endShape(CLOSE);
+  // Väikesed maagilised täpid
+  for (let i = 0; i < 7; i++) {
+    let a = frameCount * 0.025 + i * TWO_PI / 7;
+
+    fill(225, 230, 255, 140);
+    circle(
+      cos(a) * 88,
+      sin(a) * 75,
+      5
+    );
+  }
 
   pop();
 }
 
-// =====================================
-// LÕPUTEKST
-// =====================================
 
-function joonistaLopputekst() {
+// =====================================================
+// 15. ALGUSTEKST
+// =====================================================
+
+function joonistaAlgusTekst() {
   push();
 
-  textFont("Caveat");
+  let helendus = 210 + 45 * sin(frameCount * 0.06);
+
+  noStroke();
+  fill(255, 188, 88, helendus);
+
   textStyle(BOLD);
-
-  let suurus = min(
-    55,
-    width * 0.07,
-    height * 0.09
-  );
-
-  textSize(suurus);
-  fill(255, 220, 150);
-
-  drawingContext.shadowBlur = 18;
-  drawingContext.shadowColor = "#ff8035";
+  textSize(35);
 
   text(
-    "Kallid Ade ja Irka!",
+    "🎃 Head Halloweeni! 🎃",
     width / 2,
-    height * 0.46
+    67
   );
 
-  textSize(suurus * 0.75);
+  textStyle(NORMAL);
+  textSize(21);
+
+  fill(255, 232, 210);
+
+  text(
+    "Vajuta punasele korvile!",
+    width / 2,
+    128
+  );
+
+  pop();
+}
+
+
+// =====================================================
+// 16. LÕPUTEKST
+// =====================================================
+
+function joonistaLopuTekst() {
+  push();
+
+  let helendus = 215 + 40 * sin(frameCount * 0.05);
+
+  // Läbipaistev taustapaneel
+  noStroke();
+  fill(30, 8, 43, 220);
+
+  rect(
+    width / 2,
+    96,
+    720,
+    150,
+    25
+  );
+
+  // Kuldne raam
+  noFill();
+  stroke(255, 172, 58);
+  strokeWeight(3);
+
+  rect(
+    width / 2,
+    96,
+    710,
+    140,
+    22
+  );
+
+  noStroke();
+
+  fill(255, 191, 80, helendus);
+  textStyle(BOLD);
+  textSize(34);
+
+  text(
+    "🎃 Head Halloweeni! 🎃",
+    width / 2,
+    55
+  );
+
+  fill(255, 239, 212);
+  textSize(29);
 
   text(
     "Tagasihoidlik Halloweeni",
     width / 2,
-    height * 0.53
+    102
   );
 
   text(
-    "tervitus teile! ♥",
+    "tervitus teile!",
     width / 2,
-    height * 0.59
+    140
+  );
+
+  textStyle(NORMAL);
+
+  // Taaskäivitamise juhis
+  fill(255, 209, 153);
+  textSize(16);
+
+  text(
+    "Vajuta korvile, et üllatust uuesti vaadata!",
+    width / 2,
+    625
   );
 
   pop();
 }
 
-// =====================================
-// HIIR JA PUUDUTUSED
-// =====================================
 
-function mousePressed() {
-  kontrolliFotoVajutust(
-    mouseX,
-    mouseY
-  );
+// =====================================================
+// 17. KONFETID JA SÄDEMED
+// =====================================================
+
+function joonistaKonfetid() {
+  push();
+
+  colorMode(HSB, 360, 100, 100, 255);
+  noStroke();
+
+  for (let k of konfetid) {
+    k.y += k.kiirus;
+    k.x += sin(frameCount * 0.03 + k.toon) * 0.6;
+
+    if (k.y > height) {
+      k.y = -15;
+      k.x = random(width);
+    }
+
+    fill(k.toon, 85, 100, 210);
+
+    push();
+    translate(k.x, k.y);
+    rotate(frameCount * 0.025 + k.toon);
+    rect(0, 0, k.suurus, k.suurus * 1.5);
+    pop();
+  }
+
+  pop();
 }
 
-function touchStarted() {
-  // Puudutuse käsitleb p5.js mousePressed
-  // ühilduvuskiht, vältides topeltkäivitust.
-  return true;
-}
 
-// =====================================
-// AKNA SUURUSE MUUTMINE
-// =====================================
-
-function windowResized() {
-  resizeCanvas(windowWidth, windowHeight);
-
-  arvutaPaigutus();
-  uuendaNupuAsukoht();
-}
-
-// =====================================
-// SUJUV LIIKUMINE
-// =====================================
+// =====================================================
+// 18. SUJUVA LIIKUMISE FUNKTSIOON
+// =====================================================
 
 function easeOutCubic(t) {
+  t = constrain(t, 0, 1);
   return 1 - pow(1 - t, 3);
 }
+
+
+// =====================================================
+// 19. ANIMATSIOONI ETAPI VAHETAMINE
+// =====================================================
+
+function alustaEtapp(uusEtapp) {
+  etapp = uusEtapp;
+  etapiAlgus = millis();
+}
+
+
+// =====================================================
+// 20. HIIREGA KORVILE VAJUTAMINE
+// =====================================================
+
+function mousePressed() {
+  kontrolliKorviVajutust();
+}
+
+
+// =====================================================
+// 21. PUUTEEKRAANI TUGI
+// =====================================================
+
+function touchStarted() {
+  kontrolliKorviVajutust();
+  return false;
+}
+
+
+// =====================================================
+// 22. KORVI VAJUTUSE KONTROLL
+// =====================================================
+
+function kontrolliKorviVajutust() {
+  let korviSees =
+    mouseX > KORVI_X - KORVI_LAIUS / 2 &&
+    mouseX < KORVI_X + KORVI_LAIUS / 2 &&
+    mouseY > KORVI_Y - 100 &&
+    mouseY < KORVI_Y + KORVI_KORGUS / 2;
+
+  if (korviSees) {
+    // Alguses käivitab vajutus animatsiooni.
+    if (etapp === 0) {
+      alustaEtapp(1);
+    }
+
+    // Lõpus saab tervitust uuesti mängida.
+    else if (etapp === 5) {
+      alustaEtapp(1);
+
+      // Konfetid lähevad algasendisse.
+      for (let k of konfetid) {
+        k.y = random(-height, 0);
+        k.x = random(width);
+      }
+    }
+  }
+}
+
+// =====================================================
+// 🎃 ANIMATSIOONI LÕPP 🎃
+//
+// 1. Alguses on ekraanil punane punutud korv,
+//    mille sees istub kass1.jpg.
+//
+// 2. Korvil on tekst "Kallid Ade ja Irka!"
+//
+// 3. Korvile vajutades lendab välja kass4.jpg.
+//
+// 4. Seejärel veereb välja kass2.jpg ja
+//    koos temaga hõljub kummitus kass3.jpg.
+//
+// 5. Animatsioon peatub kaheks sekundiks.
+//
+// 6. Kass4.jpg lendab uuesti korvist välja.
+//
+// 7. Ilmuvad konfetid ja tekst:
+//    "Tagasihoidlik Halloweeni tervitus teile!"
+//
+// 8. Korvile uuesti vajutades algab kõik otsast.
+//
+// Kõiki animatsiooni suurusi, kiirusi ja aegu
+// saab muuta koodi alguses olevate parameetritega.
+// =====================================================
+
+
+
+
