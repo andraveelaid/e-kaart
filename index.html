@@ -1,853 +1,110 @@
 
-/*
-  HALLOWEENI TERVITUS ADELE JA IRKALE
-  ===================================
-  p5.js animatsioon
-
-  Lisa p5.js projekti kausta järgmised pildid:
-  - kass.jpg
-  - lendavnoid.jpg
-  - korvits.jpg
-  - kummitus.jpg
-
-  Vajuta punasele korvile, et animatsioon käivitada.
-  Uuesti vaatamiseks vajuta korvile veel kord.
-*/
-
-// ======================================
-// MUUDETAVAD NUMBRILISED PARAMEETRID
-// ======================================
-
-const LAIUS = 900;
-const KORGUS = 650;
-
-const KORVI_X = 450;
-const KORVI_Y = 435;
-const KORVI_LAIUS = 380;
-const KORVI_KORGUS = 205;
-
-const KASSI_SUURUS = 185;
-const NOIA_SUURUS = 175;
-const KORVITSA_SUURUS = 125;
-const KUMMITUSE_SUURUS = 130;
-
-const LENDAMISE_AEG = 2400;
-const VEEREMISE_AEG = 2200;
-const PAUS = 2000;
-const TEISE_LENNU_AEG = 2500;
-const TEKSTI_ILMUMISE_AEG = 1400;
-
-const TAHTEDE_ARV = 75;
-const SADEMETE_ARV = 45;
-
-const KORVI_PUNANE = [165, 22, 43];
-const KORVI_HELE = [220, 65, 75];
-const KORVI_TUME = [95, 8, 28];
-
-// ======================================
-// GLOBAALSED MUUTUJAD
-// ======================================
-
-let kass;
-let noid;
-let korvits;
-let kummitus;
-
-let etapp = 0;
-let etapiAlgus = 0;
-
-let tahed = [];
-let sademed = [];
-
-let noiaX = 0;
-let noiaY = 0;
-let korvitsaX = 0;
-let korvitsaY = 0;
-let kummituseX = 0;
-let kummituseY = 0;
-
-let puuduvadPildid = [];
-
-// ======================================
-// PILTIDE LAADIMINE
-// ======================================
-
-function preload() {
-  kass = loadImage(
-    "kass.jpg",
-    () => {},
-    () => puuduvadPildid.push("kass.jpg")
-  );
-
-  noid = loadImage(
-    "lendavnoid.jpg",
-    () => {},
-    () => puuduvadPildid.push("lendavnoid.jpg")
-  );
-
-  korvits = loadImage(
-    "korvits.jpg",
-    () => {},
-    () => puuduvadPildid.push("korvits.jpg")
-  );
-
-  kummitus = loadImage(
-    "kummitus.jpg",
-    () => {},
-    () => puuduvadPildid.push("kummitus.jpg")
-  );
-}
-
-// ======================================
-// ALGSEADISTUS
-// ======================================
-
-function setup() {
-  createCanvas(LAIUS, KORGUS);
-  imageMode(CENTER);
-  rectMode(CENTER);
-  textAlign(CENTER, CENTER);
-  angleMode(RADIANS);
-
-  for (let i = 0; i < TAHTEDE_ARV; i++) {
-    tahed.push({
-      x: random(width),
-      y: random(height * 0.75),
-      r: random(1, 3),
-      faas: random(TWO_PI)
-    });
-  }
-
-  for (let i = 0; i < SADEMETE_ARV; i++) {
-    sademed.push({
-      x: random(width),
-      y: random(height),
-      r: random(2, 5),
-      kiirus: random(0.3, 1.4),
-      faas: random(TWO_PI)
-    });
-  }
-}
-
-// ======================================
-// PEAMINE JOONISTUSTSÜKKEL
-// ======================================
-
-function draw() {
-  joonistaTaust();
-  joonistaKuu();
-  joonistaTahed();
-  joonistaSademed();
-
-  let aeg = millis() - etapiAlgus;
-
-  // Alguses on korv suletud ja kass istub korvis.
-  if (etapp === 0) {
-    joonistaKass();
-    joonistaKorv(true);
-    joonistaJuhis();
-  }
-
-  // Esimene väljalend ja kõrvitsa veeremine.
-  if (etapp === 1) {
-    let t = constrain(aeg / LENDAMISE_AEG, 0, 1);
-    let v = constrain(aeg / VEEREMISE_AEG, 0, 1);
-
-    joonistaKass();
-    joonistaKorv(false);
-
-    joonistaEsimeneNoid(t);
-    joonistaVeerevKorvits(v);
-    joonistaLiikuvKummitus(v);
-
-    if (aeg >= max(LENDAMISE_AEG, VEEREMISE_AEG)) {
-      vahetaEtapp(2);
-    }
-  }
-
-  // Kahe sekundi pikkune paus.
-  if (etapp === 2) {
-    joonistaKass();
-    joonistaKorv(false);
-
-    joonistaPilt(
-      korvits,
-      width * 0.78,
-      height * 0.80,
-      KORVITSA_SUURUS,
-      "🎃"
-    );
-
-    joonistaPilt(
-      kummitus,
-      width * 0.84,
-      height * 0.48 +
-        sin(millis() * 0.003) * 12,
-      KUMMITUSE_SUURUS,
-      "👻"
-    );
-
-    if (aeg >= PAUS) {
-      vahetaEtapp(3);
-    }
-  }
-
-  // Nõid lendab teist korda korvist välja.
-  if (etapp === 3) {
-    let t = constrain(aeg / TEISE_LENNU_AEG, 0, 1);
-
-    joonistaKass();
-    joonistaKorv(false);
-    joonistaLopputegelased();
-    joonistaTeineNoid(t);
-
-    if (aeg >= TEISE_LENNU_AEG) {
-      vahetaEtapp(4);
-    }
-  }
-
-  // Lõputervitus ilmub.
-  if (etapp === 4) {
-    joonistaKass();
-    joonistaKorv(false);
-    joonistaLopputegelased();
-
-    joonistaPilt(
-      noid,
-      width * 0.75,
-      height * 0.24 +
-        sin(millis() * 0.003) * 13,
-      NOIA_SUURUS,
-      "🧙"
-    );
-
-    let alpha = map(
-      aeg,
-      0,
-      TEKSTI_ILMUMISE_AEG,
-      0,
-      255,
-      true
-    );
-
-    joonistaLopputervitus(alpha);
-  }
-
-  // Hoiatus, kui pildifailid puuduvad.
-  if (puuduvadPildid.length > 0) {
-    push();
-    fill(255, 220, 170);
-    noStroke();
-    textSize(12);
-    text(
-      "Lisa pildid projekti: " +
-        puuduvadPildid.join(", "),
-      width / 2,
-      height - 14
-    );
-    pop();
-  }
-}
-
-// ======================================
-// TAUST JA HALLOWEENI MEELEOLU
-// ======================================
-
-function joonistaTaust() {
-  background(14, 8, 35);
-
-  noStroke();
-
-  for (let y = 0; y < height; y += 3) {
-    let t = y / height;
-    fill(
-      lerp(17, 65, t),
-      lerp(9, 15, t),
-      lerp(43, 63, t)
-    );
-    rect(width / 2, y, width, 3);
-  }
-
-  // Maapind.
-  fill(35, 15, 40);
-  ellipse(
-    width / 2,
-    height + 115,
-    width * 1.5,
-    310
-  );
-
-  // Õrn udu.
-  fill(130, 80, 155, 24);
-  ellipse(240, 550, 540, 90);
-  ellipse(680, 565, 500, 80);
-}
-
-function joonistaKuu() {
-  push();
-
-  noStroke();
-
-  fill(255, 195, 85, 15);
-  circle(145, 125, 195);
-
-  fill(255, 198, 92, 30);
-  circle(145, 125, 160);
-
-  fill(255, 215, 125);
-  circle(145, 125, 115);
-
-  fill(230, 177, 90, 65);
-  circle(126, 110, 20);
-  circle(168, 144, 14);
-
-  pop();
-}
-
-function joonistaTahed() {
-  noStroke();
-
-  for (let t of tahed) {
-    let heledus =
-      140 + 115 * sin(millis() * 0.002 + t.faas);
-
-    fill(255, 225, 165, heledus);
-    circle(t.x, t.y, t.r * 2);
-  }
-}
-
-function joonistaSademed() {
-  noStroke();
-
-  for (let s of sademed) {
-    let x =
-      s.x + sin(millis() * 0.001 + s.faas) * 20;
-
-    let y =
-      (s.y - millis() * s.kiirus * 0.025 +
-        height * 10) % height;
-
-    fill(255, 150, 55, 135);
-    circle(x, y, s.r);
-  }
-}
-
-// ======================================
-// PUNUTUD PUNANE KORV
-// ======================================
-
-function joonistaKorv(suletud) {
-  push();
-
-  translate(KORVI_X, KORVI_Y);
-
-  let w = KORVI_LAIUS;
-  let h = KORVI_KORGUS;
-
-  // Korvi vari.
-  noStroke();
-  fill(0, 0, 0, 75);
-  ellipse(0, h * 0.65, w * 1.1, 45);
-
-  // Korvi tagumine serv.
-  fill(...KORVI_TUME);
-  stroke(70, 5, 20);
-  strokeWeight(5);
-  ellipse(0, -h * 0.33, w, 72);
-
-  // Korvi punane keha.
-  fill(...KORVI_PUNANE);
-  stroke(...KORVI_TUME);
-  strokeWeight(6);
-
-  beginShape();
-  vertex(-w * 0.5, -h * 0.33);
-  bezierVertex(
-    -w * 0.47, h * 0.16,
-    -w * 0.39, h * 0.52,
-    -w * 0.29, h * 0.57
-  );
-  bezierVertex(
-    -w * 0.1, h * 0.68,
-    w * 0.1, h * 0.68,
-    w * 0.29, h * 0.57
-  );
-  bezierVertex(
-    w * 0.39, h * 0.52,
-    w * 0.47, h * 0.16,
-    w * 0.5, -h * 0.33
-  );
-  endShape(CLOSE);
-
-  // Horisontaalne punutis.
-  noFill();
-  stroke(...KORVI_HELE);
-  strokeWeight(6);
-
-  for (let j = 0; j < 8; j++) {
-    let yy = -h * 0.25 + j * h * 0.105;
-    let ulatus =
-      w * (0.46 - max(0, j - 4) * 0.026);
-
-    beginShape();
-
-    for (let x = -ulatus; x <= ulatus; x += 7) {
-      vertex(
-        x,
-        yy + sin(x * 0.075 + j * PI) * 4
-      );
+<!DOCTYPE html>
+<html lang="et">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0">
+
+  <title>Sulle on kiri! – Halloweeni üllatus</title>
+
+  <!-- Käekirjafont -->
+  <link rel="preconnect"
+        href="https://fonts.googleapis.com">
+  <link rel="preconnect"
+        href="https://fonts.gstatic.com"
+        crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&display=swap"
+    rel="stylesheet">
+
+  <!-- p5.js CDN -->
+  <script
+    src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.11/p5.min.js">
+  </script>
+
+  <style>
+    * {
+      box-sizing: border-box;
     }
 
-    endShape();
-  }
-
-  // Diagonaalne punutis.
-  stroke(105, 12, 32, 155);
-  strokeWeight(3);
-
-  for (let x = -w * 0.45; x < w * 0.45; x += 21) {
-    line(
-      x,
-      -h * 0.29,
-      x + 47,
-      h * 0.48
-    );
-
-    line(
-      x + 47,
-      -h * 0.29,
-      x,
-      h * 0.48
-    );
-  }
-
-  // Ülemine punutud äär.
-  noFill();
-  stroke(235, 85, 92);
-  strokeWeight(14);
-  arc(0, -h * 0.31, w, 62, 0, PI);
-
-  stroke(100, 8, 28);
-  strokeWeight(3);
-  arc(0, -h * 0.31, w, 62, 0, PI);
-
-  // Suletud korvi kaas.
-  if (suletud) {
-    fill(175, 25, 45);
-    stroke(100, 8, 28);
-    strokeWeight(6);
-
-    ellipse(0, -h * 0.53, w * 1.06, 100);
-
-    noFill();
-    stroke(235, 90, 95, 160);
-    strokeWeight(4);
-
-    for (let i = -4; i <= 4; i++) {
-      arc(
-        i * 37,
-        -h * 0.54,
-        70,
-        45,
-        0,
-        PI
-      );
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #100820;
     }
 
-    // Väike käepide.
-    stroke(105, 8, 25);
-    strokeWeight(12);
-    arc(
-      0,
-      -h * 0.77,
-      90,
-      65,
-      PI,
-      TWO_PI
-    );
-  }
-
-  // Kuldne silt korvi esiküljel.
-  fill(255, 211, 120);
-  stroke(105, 45, 20);
-  strokeWeight(3);
-  rect(0, h * 0.18, w * 0.79, 65, 16);
-
-  noStroke();
-  fill(115, 20, 35);
-  textStyle(BOLD);
-  textSize(26);
-  text(
-    "Kallid Ade ja Irka!",
-    0,
-    h * 0.18
-  );
-
-  pop();
-}
-
-// ======================================
-// KASS KORVIS
-// ======================================
-
-function joonistaKass() {
-  let x = KORVI_X;
-  let y =
-    KORVI_Y -
-    KORVI_KORGUS * 0.56 +
-    sin(millis() * 0.002) * 3;
-
-  joonistaPilt(
-    kass,
-    x,
-    y,
-    KASSI_SUURUS,
-    "🐈"
-  );
-}
-
-// ======================================
-// PILTIDE JOONISTAMINE
-// ======================================
-
-function joonistaPilt(
-  pilt,
-  x,
-  y,
-  suurus,
-  asendus
-) {
-  push();
-
-  imageMode(CENTER);
-
-  if (
-    pilt &&
-    pilt.width > 0 &&
-    pilt.height > 0
-  ) {
-    let suhe = pilt.width / pilt.height;
-
-    let w = suurus;
-    let h = suurus;
-
-    if (suhe > 1) {
-      h = suurus / suhe;
-    } else {
-      w = suurus * suhe;
+    canvas {
+      display: block;
+      position: fixed;
+      inset: 0;
+      touch-action: manipulation;
     }
 
-    image(pilt, x, y, w, h);
-  } else {
-    textSize(suurus * 0.65);
-    noStroke();
-    fill(255);
-    text(asendus, x, y);
-  }
-
-  pop();
-}
-
-// ======================================
-// ESIMENE LENDAV NÕID
-// ======================================
-
-function joonistaEsimeneNoid(t) {
-  let sujuv = easeOutCubic(t);
-
-  noiaX = lerp(
-    KORVI_X,
-    width * 0.84,
-    sujuv
-  );
-
-  noiaY =
-    lerp(
-      KORVI_Y - 110,
-      height * 0.12,
-      sujuv
-    ) -
-    sin(t * PI) * 85;
-
-  push();
-  translate(noiaX, noiaY);
-
-  rotate(sin(t * TWO_PI) * 0.12);
-
-  joonistaPilt(
-    noid,
-    0,
-    0,
-    NOIA_SUURUS,
-    "🧙"
-  );
-
-  pop();
-}
-
-// ======================================
-// VEEREV KÕRVITS
-// ======================================
-
-function joonistaVeerevKorvits(t) {
-  let sujuv = easeOutCubic(t);
-
-  korvitsaX = lerp(
-    KORVI_X + 60,
-    width * 0.78,
-    sujuv
-  );
-
-  korvitsaY =
-    lerp(
-      KORVI_Y - 65,
-      height * 0.80,
-      sujuv
-    ) -
-    sin(t * PI) * 95;
-
-  push();
-
-  translate(korvitsaX, korvitsaY);
-  rotate(t * TWO_PI * 2);
-
-  joonistaPilt(
-    korvits,
-    0,
-    0,
-    KORVITSA_SUURUS,
-    "🎃"
-  );
-
-  pop();
-}
-
-// ======================================
-// LENDLEV KUMMITUS
-// ======================================
-
-function joonistaLiikuvKummitus(t) {
-  let sujuv = easeOutCubic(t);
-
-  kummituseX = lerp(
-    KORVI_X - 30,
-    width * 0.84,
-    sujuv
-  );
-
-  kummituseY =
-    lerp(
-      KORVI_Y - 110,
-      height * 0.48,
-      sujuv
-    ) +
-    sin(millis() * 0.008) * 17;
-
-  push();
-
-  translate(kummituseX, kummituseY);
-  rotate(sin(millis() * 0.004) * 0.1);
-
-  joonistaPilt(
-    kummitus,
-    0,
-    0,
-    KUMMITUSE_SUURUS,
-    "👻"
-  );
-
-  pop();
-}
-
-// ======================================
-// TEINE NÕIA VÄLJALEND
-// ======================================
-
-function joonistaTeineNoid(t) {
-  let sujuv = easeOutCubic(t);
-
-  let x = lerp(
-    KORVI_X,
-    width * 0.75,
-    sujuv
-  );
-
-  let y =
-    lerp(
-      KORVI_Y - 100,
-      height * 0.24,
-      sujuv
-    ) -
-    sin(t * PI) * 140;
-
-  push();
-
-  translate(x, y);
-
-  rotate(
-    sin(t * TWO_PI * 1.5) * 0.17
-  );
-
-  joonistaPilt(
-    noid,
-    0,
-    0,
-    NOIA_SUURUS,
-    "🧙"
-  );
-
-  pop();
-}
-
-// ======================================
-// LÕPUTEGELASED
-// ======================================
-
-function joonistaLopputegelased() {
-  joonistaPilt(
-    korvits,
-    width * 0.78,
-    height * 0.80,
-    KORVITSA_SUURUS,
-    "🎃"
-  );
-
-  let y =
-    height * 0.48 +
-    sin(millis() * 0.003) * 12;
-
-  joonistaPilt(
-    kummitus,
-    width * 0.84,
-    y,
-    KUMMITUSE_SUURUS,
-    "👻"
-  );
-}
-
-// ======================================
-// TEKSTID
-// ======================================
-
-function joonistaJuhis() {
-  push();
-
-  textStyle(BOLD);
-  textSize(22);
-
-  fill(
-    255,
-    210,
-    130,
-    180 + sin(millis() * 0.005) * 65
-  );
-
-  text(
-    "Vajuta punasele korvile!",
-    width / 2,
-    height - 55
-  );
-
-  pop();
-}
-
-function joonistaLopputervitus(alpha) {
-  push();
-
-  let x = width * 0.40;
-  let y = height * 0.18;
-
-  // Õrn kuldne helendus.
-  textStyle(BOLD);
-  textSize(29);
-
-  for (let i = 5; i >= 1; i--) {
-    fill(255, 130, 25, alpha * 0.055);
-    text(
-      "Tagasihoidlik",
-      x,
-      y,
-      580
-    );
-  }
-
-  fill(255, 225, 135, alpha);
-
-  text(
-    "Tagasihoidlik",
-    x,
-    y
-  );
-
-  textSize(31);
-
-  text(
-    "Halloweeni tervitus",
-    x,
-    y + 43
-  );
-
-  textSize(36);
-  fill(255, 160, 100, alpha);
-
-  text(
-    "teile!",
-    x,
-    y + 91
-  );
-
-  // Väikesed sädelevad südamed.
-  let pulse =
-    1 + sin(millis() * 0.004) * 0.12;
-
-  textSize(30 * pulse);
-  fill(255, 100, 125, alpha);
-
-  text("♥", x - 180, y + 105);
-  text("♥", x + 180, y + 105);
-
-  pop();
-}
-
-// ======================================
-// ANIMATSIOONI JUHTIMINE
-// ======================================
-
-function vahetaEtapp(uusEtapp) {
-  etapp = uusEtapp;
-  etapiAlgus = millis();
-}
-
-function mousePressed() {
-  let korviSees =
-    mouseX > KORVI_X - KORVI_LAIUS / 2 &&
-    mouseX < KORVI_X + KORVI_LAIUS / 2 &&
-    mouseY > KORVI_Y - KORVI_KORGUS &&
-    mouseY < KORVI_Y + KORVI_KORGUS;
-
-  if (korviSees) {
-    vahetaEtapp(1);
-  }
-}
-
-// Töötab ka telefoni puudutusega.
-function touchStarted() {
-  if (
-    touches.length > 0 &&
-    touches[0].x > KORVI_X - KORVI_LAIUS / 2 &&
-    touches[0].x < KORVI_X + KORVI_LAIUS / 2 &&
-    touches[0].y > KORVI_Y - KORVI_KORGUS &&
-    touches[0].y < KORVI_Y + KORVI_KORGUS
-  ) {
-    vahetaEtapp(1);
-    return false;
-  }
-}
-
-// ======================================
-// SUJUV LIIKUMINE
-// ======================================
-
-function easeOutCubic(t) {
-  return 1 - pow(1 - t, 3);
-}
+    /* Nähtamatu, klaviatuuriga kasutatav nupp */
+    #avaNupp {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      width: min(70vw, 400px);
+      height: min(50vw, 280px);
+      transform: translate(-50%, -40%);
+      border: 0;
+      padding: 0;
+      background: transparent;
+      cursor: pointer;
+      z-index: 5;
+    }
+
+    #avaNupp:focus-visible {
+      outline: 3px solid #ffd38a;
+      outline-offset: 8px;
+      border-radius: 14px;
+    }
+
+    #avaNupp.peidetud {
+      display: none;
+    }
+
+    #juhis {
+      position: fixed;
+      left: 50%;
+      bottom: 20px;
+      transform: translateX(-50%);
+      z-index: 4;
+      color: #ffe3b5;
+      font: 24px "Caveat", cursive;
+      text-align: center;
+      pointer-events: none;
+      text-shadow: 0 2px 10px #000;
+      opacity: 0.9;
+    }
+
+    @media (max-width: 600px) {
+      #juhis {
+        font-size: 19px;
+        width: 90%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <button
+    id="avaNupp"
+    type="button"
+    aria-label="Ava üllatusümbrik">
+  </button>
+
+  <div id="juhis">
+    Vajuta ümbrikule, et avada üllatus!
+  </div>
+
+  <script src="sketch.js"></script>
+
+</body>
+</html>
